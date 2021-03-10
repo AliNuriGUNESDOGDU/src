@@ -33,11 +33,6 @@ def inversekinematicmodel(x,z):
     q1 = math.atan2(x,z)-math.atan2((a1+a2*math.cos(-q2)),(a2*math.sin(-q2)))
     return q1,q2
 
-def cosinetheorem(a1,a2,a3):
-    asdf = -(a1*a1-a2*a2-a3*a3)/2/a2/a3
-    return math.acos(max(-1.0, min(1.0, asdf)))
-    
-
 def gripper_client(value,link):
     JOINT_NAMES = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint',
                'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
@@ -69,9 +64,9 @@ def gripper_client(value,link):
     q1_init = 1.5708
     q2_init = 0.8351
     q3_init = -2.4335
-    q4_init = -0.9274
-    q5_init = -2.0708
-    q6_init = -1.2708
+    q4_init = -0.8974
+    q5_init = -2.09672
+    q6_init = -1.2577
 
     g.trajectory.points = [
         JointTrajectoryPoint(positions=[q1_init,q2_init,q3_init,q4_init,q5_init,q6_init], 
@@ -79,7 +74,7 @@ def gripper_client(value,link):
             time_from_start=rospy.Duration(1.0))]
 
     x_init,z_init = forwardkinemodel(q2_init,q3_init)
-    amplitude = 0.15
+    amplitude = 0.02
     phase_angle_x = 0.0
     phase_angle_y = 0.0
     bpm = 30   
@@ -88,66 +83,29 @@ def gripper_client(value,link):
     x_kp = xy_kp*math.cos(math.pi/2+q5_init)
     y_kp = xy_kp*math.sin(math.pi/2+q5_init)
     print x_kp,y_kp,z_kp
-    '''
-    Do the transformation in Z wrt q1 later
-    '''
-    # Table is a surface at z = -0.4
-    z_to_look = -0.4
-    z_distance_init = z_init-z_to_look
-    xy_distance_init = z_distance_init/math.tan(q2_init+q3_init+q4_init+math.pi)
-    y_distance_init = y_kp*xy_distance_init
-    x_distance_init = x_kp*xy_distance_init
-    y_to_look = 0 + y_distance_init
-    x_to_look = x_init + x_distance_init
-    xz_distance_init = math.sqrt(
-        x_distance_init*x_distance_init+z_distance_init*z_distance_init)
-    xyz_distance_init = math.sqrt(
-        x_distance_init*x_distance_init+
-        y_distance_init*y_distance_init+
-        z_distance_init*z_distance_init)
-
-    print x_to_look,y_to_look,z_to_look
-
-
-
+    #'''
 
     numberofsamples = round(600/bpm)
     angle = 0.0
+    print forwardkinemodel(0.3,-2.5)
     save_string = "bpm_"+ str(bpm) + "_ampl_" +str(amplitude) + "_px_" \
         + str(phase_angle_x) + "_py_" + str(phase_angle_y) +"_ykp_" +str(y_kp)
 
 
     while d < 50.0:
-        x_change_mag = 0*amplitude
-        #y_change = y_kp*amplitude*
-        z_change_mag = 1*amplitude
-        x_change = x_change_mag*(1-math.cos(angle))
-        z_change = z_change_mag*(1-math.cos(angle))
+        x_change = x_kp*amplitude*math.sin(angle)
+        y_change = y_kp*amplitude*math.sin(angle)
+        z_change = z_kp*amplitude*math.sin(angle)
         x_abs = x_init + x_change
-        y_abs = 0
+        y_abs = 0 + y_change
         z_abs = z_init - z_change
-
-        xz_distance = math.sqrt(
-            (x_abs-x_to_look)*(x_abs-x_to_look)+(z_abs-z_to_look)*(z_abs-z_to_look))
-        xz_change = math.sqrt(x_change*x_change+z_change*z_change)
-
-        xyz_distance = math.sqrt(
-            (x_abs-x_to_look)*(x_abs-x_to_look)+
-            y_distance_init*y_distance_init+
-            (z_abs-z_to_look)*(z_abs-z_to_look))
-
-        q_comp_xz = cosinetheorem(xz_change,xz_distance_init,xz_distance)
-        q_comp_y = cosinetheorem(xz_change,xyz_distance_init,xyz_distance)
-        print xz_change,xyz_distance_init,xyz_distance
-
-
         q_change = math.atan2(y_abs,x_abs)
-        q1 = q1_init+0*math.copysign(1,math.sin(angle))*q_comp_y
+        q1 = q1_init+q_change
         q2,q3 = inversekinematicmodel(x_abs,z_abs)
-        q4 = q4_init+q3_init+q2_init-q2-q3-q_comp_xz
-        q5 = q5_init-q_comp_y
+        q4 = q4_init+q3_init+q2_init-q2-q3
+        q5 = q5_init - q_change
         q6 = q6_init
-        #print [q1,q2,q3,q4,q5,q6]
+        print [q1,q2,q3,q4,q5,q6]
 
         angle += math.pi/numberofsamples
         d += 0.1
