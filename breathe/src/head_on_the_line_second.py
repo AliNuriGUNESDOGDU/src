@@ -20,6 +20,40 @@ import numpy as np
 import os
 import subprocess
 
+def denavit_hartenberg(q,a,d,alpha):
+    rot_z = np.array([
+        [math.cos(q), -math.sin(q), 0, 0],
+        [math.sin(q), math.cos(q),  0, 0],
+        [0,           0,            1, 0],
+        [0,           0,            0, 1],
+        ])
+    tra_z = np.array([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, d],
+        [0, 0, 0, 1],
+        ])
+    tra_x = np.array([
+        [1, 0, 0, a],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1],
+        ])
+    rot_x = np.array([
+        [1, 0,               0,                0],
+        [0, math.cos(alpha), -math.sin(alpha), 0],
+        [0, math.sin(alpha), math.cos(alpha),  0],
+        [0, 0,               0,                1],
+        ])
+    return np.multiply(rot_z,np.multiply(tra_z,np.multiply(tra_x,rot_x)))
+
+def forward_kinematic(end,q):
+    a = np.array([0,-0.425,-0.39225,0,0,0])
+    d = np.array([0.1519,0,0,0.11235,0.08535,0.0819])
+    alpha = np.array([math.pi()/2,0,0,math.pi()/2,-math.pi()/2,0])
+    
+
+
 def forwardkinemodel(q1,q2):
     a1 = 0.42500
     a2 = 0.39225
@@ -40,6 +74,7 @@ def gripper_client(value,link):
     Q2 = [1.5,0,-1.57,0,0,0]
     Q3 = [1.5,-0.2,-1.57,0,0,0]
     Q4 = [0.15,0,0,0,0,0]
+    print denavit_hartenberg(0,0,0,0)
     if rospy.has_param('arm_controller'):
     	namespace_ = '/arm_controller/follow_joint_trajectory'
     else:
@@ -62,11 +97,11 @@ def gripper_client(value,link):
     #'''
     # Breathe Type-10
     q1_init = 1.5708
-    q2_init = 0.8351
-    q3_init = -2.4335
-    q4_init = -0.8974
-    q5_init = -2.09672
-    q6_init = -1.2577
+    q2_init = 0.8652
+    q3_init = -2.1735
+    q4_init = -0.8441474
+    q5_init = -1.0508
+    q6_init = -2.2357081
 
     g.trajectory.points = [
         JointTrajectoryPoint(positions=[q1_init,q2_init,q3_init,q4_init,q5_init,q6_init], 
@@ -82,7 +117,7 @@ def gripper_client(value,link):
     xy_kp = math.cos(q2_init+q3_init+q4_init+math.pi)
     x_kp = xy_kp*math.cos(math.pi/2+q5_init)
     y_kp = xy_kp*math.sin(math.pi/2+q5_init)
-    print x_kp,y_kp,z_kp
+    # print x_kp,y_kp,z_kp
     #'''
 
     numberofsamples = round(600/bpm)
@@ -105,7 +140,7 @@ def gripper_client(value,link):
         q4 = q4_init+q3_init+q2_init-q2-q3
         q5 = q5_init - q_change
         q6 = q6_init
-        print [q1,q2,q3,q4,q5,q6]
+        #print [q1,q2,q3,q4,q5,q6]
 
         angle += math.pi/numberofsamples
         d += 0.1

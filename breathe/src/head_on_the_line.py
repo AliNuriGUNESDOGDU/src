@@ -62,11 +62,11 @@ def gripper_client(value,link):
     #'''
     # Breathe Type-10
     q1_init = 1.5708
-    q2_init = 0.8351
-    q3_init = -2.4335
-    q4_init = -0.8974
-    q5_init = -2.09672
-    q6_init = -1.2577
+    q2_init = 0.8652
+    q3_init = -2.1735
+    q4_init = -0.8441474
+    q5_init = -1.0508
+    q6_init = -2.2357081
 
     g.trajectory.points = [
         JointTrajectoryPoint(positions=[q1_init,q2_init,q3_init,q4_init,q5_init,q6_init], 

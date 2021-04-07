@@ -62,11 +62,11 @@ def gripper_client(value,link):
     #'''
     # Breathe Type-10
     q1_init = 1.5708
-    q2_init = 0.8351
-    q3_init = -2.4335
-    q4_init = -0.8974
-    q5_init = -2.09672
-    q6_init = -1.2577
+    q2_init = 0.8652
+    q3_init = -2.1735
+    q4_init = -0.8441474
+    q5_init = -1.0508
+    q6_init = -2.2357081
 
     g.trajectory.points = [
         JointTrajectoryPoint(positions=[q1_init,q2_init,q3_init,q4_init,q5_init,q6_init], 
@@ -77,7 +77,7 @@ def gripper_client(value,link):
     amplitude = 0.02
     phase_angle_x = 0.0
     phase_angle_y = 0.0
-    bpm = 30   
+    bpm = 18
     z_kp = math.sin(q2_init+q3_init+q4_init+math.pi)
     xy_kp = math.cos(q2_init+q3_init+q4_init+math.pi)
     x_kp = xy_kp*math.cos(math.pi/2+q5_init)
@@ -91,11 +91,34 @@ def gripper_client(value,link):
     save_string = "bpm_"+ str(bpm) + "_ampl_" +str(amplitude) + "_px_" \
         + str(phase_angle_x) + "_py_" + str(phase_angle_y) +"_ykp_" +str(y_kp)
 
+    quite_cage = 0.00
+    quite_abdomen = 0.009 
+    deep = 0.033
+        #'''
+    # Breathe Type-4
+    case = quite_abdomen
+    typestr = "quite_abdomen"
+    angle = 0.2
+
+    scale = 4.0
+    #'''
+
+    
+    volume_data = [0, 0.4910,1.7458,3.296,4.9083,6.5336,8.1843,9.8487,11.4723,13.0,14.4342,15.7978,
+        17.0696,18.1916,19.1012,19.7648,20.1988,20.4667,20.6032,20.5069,19.9832,18.8786,17.2090,
+        15.1815,12.9707,10.6080,8.1561,5.7395,3.3896,1.0770,-1.1285,-3.0217,-2.2860]
+    kp = (1/20.6032)*case*scale
+    #print kp
+    volume_data = [(element) * kp for element in volume_data]
+    ind = 0;
+
 
     while d < 50.0:
-        x_change = x_kp*amplitude*math.sin(angle)
-        y_change = y_kp*amplitude*math.sin(angle)
-        z_change = z_kp*amplitude*math.sin(angle)
+        amplitude = volume_data[ind%33]
+        ind += 1
+        x_change = x_kp*amplitude
+        y_change = y_kp*amplitude
+        z_change = z_kp*amplitude
         x_abs = x_init + x_change
         y_abs = 0 + y_change
         z_abs = z_init - z_change
@@ -108,7 +131,7 @@ def gripper_client(value,link):
         print [q1,q2,q3,q4,q5,q6]
 
         angle += math.pi/numberofsamples
-        d += 0.1
+        d += (60.0/33/bpm)
     
         g.trajectory.points.append(
             JointTrajectoryPoint(positions=[q1,q2,q3,q4,q5,q6], 
