@@ -13,8 +13,9 @@ import sys
 import actionlib
 import argparse
 import control_msgs.msg
-import rospy
 import moveit_commander
+import rospy
+import trajectory_msgs.msg
 
 class BreathingSource(object):
     """This class implement different source of breathing as class methods
@@ -46,9 +47,10 @@ class Breathe(object):
         self.group = moveit_commander.MoveGroupCommander(self.group_name)
 
         self.waypoints = []
-        self.start_pose = group.get_current_pose().pose
-        self.pose_next = copy.deepcopy(start_pose)
-        self.move_vector = np.linalg.norm(np.array([1, 1, 1]))
+        self.start_pose = self.group.get_current_pose().pose
+        self.pose_next = copy.deepcopy(self.start_pose)
+        self.move_vector = (np.array([1, 1, 1])
+            /np.linalg.norm(np.array([1, 1, 1])))
         self.gaze_point = np.array([0.2, 0.0, -0.2])
         self.plan = None
 
@@ -64,14 +66,32 @@ class Breathe(object):
         ind = 0
         d = 0
 
+        while d < 33:
+            scale = volume_data[ind%33]
+            ind += 1
+            d += 1
+            self.pose_next.position.z = self.start_pose.position.z + scale * self.move_vector[2]  # First move up (z)
+            self.pose_next.position.y = self.start_pose.position.y + scale * self.move_vector[1]  # and sideways (y)
+            self.pose_next.position.x = self.start_pose.position.x + scale * self.move_vector[0]  # Second move forward/backwards in (x)
+            self.waypoints.append(copy.deepcopy(self.pose_next))
+
+        self.maintain_gaze()
+        self.plan_path()
+        self.execute_path()
+
 
 
     def maintain_gaze(self):
         for wpose in self.waypoints:
-            gaze_vector_W = np.linalg.norm(self.gaze_point - np.array(
-                [wpose.position.x, wpose.position.y, wpose.position.z]))
+            gaze_vector_W = self.gaze_point - np.array(
+                [wpose.position.x, wpose.position.y, wpose.position.z])
+            gaze_vector_W = gaze_vector_W/np.linalg.norm(gaze_vector_W) 
+            print gaze_vector_W
             angle = np.dot(gaze_vector_W,[0,0,1])
-            axis = np.norm(np.cross(gaze_vector_W,[0,0,1]))
+            print angle
+            axis = np.cross(gaze_vector_W,[0,0,1])
+            axis = axis/np.linalg.norm(axis)
+            print axis
             sin_ = math.sin(angle/2)
             wpose.orientation.x = axis[0]*sin_
             wpose.orientation.y = axis[1]*sin_
@@ -80,7 +100,7 @@ class Breathe(object):
 
     def plan_path(self):
         self.plan, fraction = self.group.compute_cartesian_path(
-            waypoints,   # waypoints to follow
+            self.waypoints,   # waypoints to follow
             0.5,        # eef_step
             0.0)         # jump_threshold
 
@@ -102,13 +122,13 @@ class Breathe(object):
         print "Connected to server"
 
         g = control_msgs.msg.FollowJointTrajectoryGoal()
-        g.trajectory = JointTrajectory()
+        g.trajectory = trajectory_msgs.msg.JointTrajectory()
         g.trajectory.joint_names = JOINT_NAMES
         d= 0.0
         for point in self.plan.joint_trajectory.points:
             d += 0.1 # change later
             g.trajectory.points.append(
-                JointTrajectoryPoint(positions=point.positions,
+                trajectory_msgs.msg.JointTrajectoryPoint(positions=point.positions,
                 velocities=[0,0,0,0,0,0], time_from_start=rospy.Duration(d)))
         client.send_goal(g)
 
