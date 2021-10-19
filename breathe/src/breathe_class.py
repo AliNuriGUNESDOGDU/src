@@ -54,7 +54,7 @@ class Breathe(object):
         self.group = moveit_commander.MoveGroupCommander(group_name)
         self.group.allow_replanning(True)
         self.group.set_goal_position_tolerance(0.01)
-        self.group.set_goal_orientation_tolerance(0.1)
+        self.group.set_goal_orientation_tolerance(0.3)
         self.group.set_planning_time(1)
 
         self.client = None
@@ -63,9 +63,9 @@ class Breathe(object):
         self.waypoints = []
         self.plan = None
         
-        self.gaze_point = np.array([-3.6, 1.8, 0.3])
-        self.move_vector = (np.array([1, 0, 0])
-                            / np.linalg.norm(np.array([1, 1, 1])))
+        self.gaze_point = np.array([-0.35, 1.40, 0.05])
+        self.move_vector = (np.array([0, 1, 1])
+                            / np.linalg.norm(np.array([0, 1, 1])))
 
     def choose_source(self):
         self.waypoints = []
@@ -77,20 +77,20 @@ class Breathe(object):
                            17.0696, 18.1916, 19.1012, 19.7648, 20.1988, 
                            20.4667, 20.6032, 20.5069, 19.9832, 18.8786, 
                            17.2090, 15.1815, 12.9707, 10.6080, 8.1561, 
-                           5.7395, 3.3896, 1.0770, 0.52, 0.25, 0.0]
-            max_data = math.max(shape_data)
+                           5.7395, 3.3896, 1.0770, 0.52, 0.25]
+            max_data = max(shape_data)
             for data in shape_data:
                 pose_next.position.x = start_pose.position.x \
-                    + data*2*self.amplitude*self.move_vector[0]/max_data
+                    + data*self.amplitude*self.move_vector[0]/max_data
                 pose_next.position.y = start_pose.position.y \
-                    + data*2*self.amplitude*self.move_vector[1]/max_data
+                    + data*self.amplitude*self.move_vector[1]/max_data
                 pose_next.position.z = start_pose.position.z \
-                    + data*2*self.amplitude*self.move_vector[2]/max_data
+                    + data*self.amplitude*self.move_vector[2]/max_data
                 self.waypoints.append(copy.deepcopy(pose_next))
         elif self.source == 2:
             shape_data = [math.sin(element)
                            for element in 
-                           (np.linspace(0, 2*math.pi, 60)).tolist()]
+                           (np.linspace(0, 120/60*math.pi, 60)).tolist()]
             for data in shape_data:
                 pose_next.position.x = start_pose.position.x \
                     + data*self.amplitude*self.move_vector[0]
@@ -135,9 +135,9 @@ class Breathe(object):
 
         """
         wpose = self.group.get_current_pose().pose
-        wpose.position.x = -0.06
-        wpose.position.y = -0.26
-        wpose.position.z = 0.4
+        wpose.position.x = 0.1
+        wpose.position.y = 0.51
+        wpose.position.z = 0.1
         gaze_vector_W = self.gaze_point - np.array(
             [wpose.position.x, wpose.position.y, wpose.position.z])
         gaze_vector_W = gaze_vector_W/np.linalg.norm(gaze_vector_W)
@@ -196,6 +196,9 @@ class Breathe(object):
         inc = 60/self.bpm/len(self.plan.joint_trajectory.points)
         for i in range(self.num_cycles):
             for point in self.plan.joint_trajectory.points:
+                b = list(point.positions)
+                b[-1] = -1.4
+                point.positions = tuple(b)
                 d += inc
                 self.goal_j.trajectory.points.append(
                     trajectory_msgs.msg.JointTrajectoryPoint(
@@ -211,7 +214,7 @@ class Breathe(object):
         elif self.gaze == 2:
             self.slide_on_gaze()
         else:
-            self.send_default()
+            #self.send_default()
             self.maintain_gaze()
         self.plan_path()
         self.execute_path()
@@ -267,8 +270,10 @@ if __name__ == '__main__':
         print args.amplitude, args.bpm, args.gaze, args.source
 
         br = Breathe(args)
-        send2take()
+        #send2take()
         br.breathe_now()
+        print "finished"
+        #br.send_default()
         
         rospy.spin()
     except rospy.ROSInterruptException:
