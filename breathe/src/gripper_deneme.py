@@ -134,40 +134,40 @@ def send2take():
     group.allow_replanning(True)
     group.set_goal_position_tolerance(0.01)
     group.set_goal_orientation_tolerance(0.01)
-    group.set_planning_time(10)
+    group.set_planning_time(2)
     wpose = group.get_current_pose().pose
     print wpose
-    wpose.position.x = -0.1794
-    wpose.position.y = 0.5931
-    wpose.position.z = 0.17598
-    wpose.orientation.x = 0.5024
-    wpose.orientation.y = 0.4168
-    wpose.orientation.z = -0.755
-    wpose.orientation.w = 0.06103
+    wpose.position.x = -0.262
+    wpose.position.y = -0.165
+    wpose.position.z = 0.532
+    wpose.orientation.x = -0.5
+    wpose.orientation.y = -0.5
+    wpose.orientation.z = 0.5
+    wpose.orientation.w = 0.5
     group.set_pose_target(wpose)
     plan = group.go(wait=True)
     group.stop()
     group.clear_pose_targets()
     
     
-    wpose = group.get_current_pose().pose
+    # wpose = group.get_current_pose().pose
     # wpose.position.x = -0.33
-    wpose.position.y += -0.0
+    # wpose.position.y += -0.0
     # wpose.position.z = 0.11
     # wpose.orientation.x = 0.44
     # wpose.orientation.y = 0.84
     # wpose.orientation.z = 0.12
     # wpose.orientation.w = -0.267
-    group.set_pose_target(wpose)
+    # group.set_pose_target(wpose)
     
-    plan = group.go(wait=True)
-    group.stop()
-    group.clear_pose_targets()
+    # plan = group.go(wait=True)
+    # group.stop()
+    # group.clear_pose_targets()
 
 if __name__ == '__main__':
     try:
         pp = PickPlace()
-        pp.grip_now()
+        #pp.grip_now()
         send2take()
         
         rospy.spin()

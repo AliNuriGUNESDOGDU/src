@@ -18,6 +18,8 @@ import rospy
 import tf
 import trajectory_msgs.msg
 
+import gripper_joint_space as pp
+
 
 class BreathingSource(object):
     """This class implement different source of breathing as class methods
@@ -66,6 +68,7 @@ class Breathe(object):
         self.gaze_point = np.array([-0.35, 1.40, 0.05])
         self.move_vector = (np.array([0, 1, 1])
                             / np.linalg.norm(np.array([0, 1, 1])))
+        self.start_client()
 
     def choose_source(self):
         self.waypoints = []
@@ -197,7 +200,7 @@ class Breathe(object):
         for i in range(self.num_cycles):
             for point in self.plan.joint_trajectory.points:
                 b = list(point.positions)
-                b[-1] = -1.4
+                b[-1] = 3.9
                 point.positions = tuple(b)
                 d += inc
                 self.goal_j.trajectory.points.append(
@@ -208,7 +211,7 @@ class Breathe(object):
         self.client.send_goal(self.goal_j)
 
     def breathe_now(self):
-        self.start_client()
+        
         if self.gaze == 1:
             self.no_gaze()
         elif self.gaze == 2:
@@ -262,7 +265,7 @@ if __name__ == '__main__':
                             help="\nValue between 0.0 and 0.2")
         parser.add_argument("-g", "--gaze", type=int, default="1",
                             help="Value between 0.0 and 0.2")
-        parser.add_argument("-n", "--number", type=int, default="6",
+        parser.add_argument("-n", "--number", type=int, default="1",
                             help="Value between 0.0 and 0.2")
         parser.add_argument("-s", "--source", type=int, default="1",
                             help="Value between 0.0 and 0.2")
@@ -272,6 +275,17 @@ if __name__ == '__main__':
         br = Breathe(args)
         #send2take()
         br.breathe_now()
+        rospy.sleep(10)
+        a = pp.PickPlace()
+        a.state_machine()
+        br.amplitude = 0.2
+        br.breathe_now()
+        rospy.sleep(8)
+        a.state_machine()
+        br.gaze = 1
+        br.breathe_now()
+        rospy.sleep(10)
+        a.state_machine()
         print "finished"
         #br.send_default()
         
