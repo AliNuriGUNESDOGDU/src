@@ -118,9 +118,9 @@ class PickPlace(object):
         IN_END          = False
 
         # State Machine
-        while not rospy.is_shutdown():
-            
-            rospy.Rate(rate)
+        sample = rospy.Rate(rate)
+        while not rospy.is_shutdown():            
+            sample.sleep()
             if IN_GO_WAIT:
                 self.go(q_wait,t_go_wait)
                 IN_GO_WAIT = False
