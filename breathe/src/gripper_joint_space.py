@@ -78,22 +78,23 @@ class PickPlace(object):
         """
         # Parameters of state machine
         # Joint states of the pick and place action
-        q_wait = [-1.36,-3.91,1.91,-2.28,-4.15,3.9]
-        q_go_pick = [-0.93,-3.59,0.98,-2.13,-4.7,5.29]
-        q_pick = [-0.93,-3.59,0.98,-2.13,-4.7,5.29]
-        q_show = [-1.38,-3.78,1.42,-0.83,-4.82,4.61]
-        q_release = [-2.02,-3.98,1.42,-1.49,-4.88,4.62]
+        q_wait = [1.83,1.01,-1.92,-1.18,-2.04,-0.84]
+        q_go_pick = [1.53,0.65,-1.08,-1.18,-1.59,-0.07]
+        q_pick = [1.53,0.65,-1.08,-1.18,-1.59,-0.07]
+        q_show = [1.03,0.83,-1.23,-3.00,-2.10,-1.68]
+        q_release = [-0.37,0.67,-1.21,-1.1,-1.61,-0.85]
         # Times
-        t_go_wait = 0.4
-        t_wait = 5.6
+        t_go_wait = 0.6
+        t_wait = 0.2
         t_go_pick = 2.4
         t_gripper_open = 0.3
-        t_pick = 2.4
+        t_pick = 0.5
         t_gripper_close = 0.2
         t_go_show = 2.4
-        t_show = 5.2
+        t_show = 1.6
         t_go_release = 2.4
-        t_release = 14.4
+        t_release = 1.0
+        t_go_end = 4.4
         # Other Params
         rate = 20 # Hz
         t_passed = 0.0        
@@ -165,7 +166,7 @@ class PickPlace(object):
                 pass
             elif IN_PICK:
                 t_passed = 0.0
-                self.gripper_pub.publish("0.25")
+                self.gripper_pub.publish("0.27")
                 IN_PICK = False
                 PICK = True
                 print("IN_PICK")
@@ -238,7 +239,8 @@ class PickPlace(object):
                 pass
             elif IN_END:
                 #self.gripper_pub.publish("0.7")
-                self.go(q_wait,t_go_pick)
+                self.go(q_wait,t_go_end)
+                self.gripper_pub.publish("0.7")
                 IN_END = False
                 END = True
                 print("IN_END")
@@ -246,8 +248,7 @@ class PickPlace(object):
             elif END    :
                 if (self.client.get_state() 
                 == actionlib_msgs.msg.GoalStatus.SUCCEEDED):
-                    END = False
-                    self.gripper_pub.publish("0.7")
+                    END = False                    
                     print("Finished machine")
                     break
                     pass
@@ -324,6 +325,7 @@ def send2take():
 
 if __name__ == '__main__':
     try:
+        rospy.init_node('pickandplace', anonymous=True)
         pp = PickPlace()
         q1 = [-1.36,-3.91,1.91,-2.28,-4.15,3.9]
         #pp.go(q1,1.2)
@@ -333,6 +335,7 @@ if __name__ == '__main__':
         pp.state_machine()
         #pp.grip_now()
         #send2take()
+        
         
         rospy.spin()
     except rospy.ROSInterruptException:

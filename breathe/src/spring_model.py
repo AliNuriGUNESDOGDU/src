@@ -31,13 +31,13 @@ def twospringmodel(theta_0):
     velocity = 0
     positions = [position]
     velocities = [velocity]
-    dt = 0.01
+    dt = 0.05
     time = 0
     frequency = 12 #beat per minute
     num_breathe = 0
     print "before while"
 
-    while time<60 :
+    while time<6 :
         time = time + dt
         Torque = (-alpha*k_ac*(position-r*theta_0)-
             k_pe*(position-theta_0)-b*velocity)        
@@ -67,6 +67,9 @@ def gripper_client(value,link):
         '/follow_joint_trajectory',  # namespace of the action topics
         control_msgs.msg.FollowJointTrajectoryAction # action type
     )
+    positions1,velocities1= twospringmodel(1.0)
+    print  (np.array([1.0] * len(positions1))-np.array(positions1)).tolist()
+    return
     print "Waiting for server..."        
     client.wait_for_server()
     print "Connected to server"

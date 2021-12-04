@@ -12,6 +12,7 @@ import os
 import sys
 
 import actionlib
+import actionlib_msgs.msg
 import control_msgs.msg
 import moveit_commander
 import rospy
@@ -56,7 +57,7 @@ class Breathe(object):
         self.group = moveit_commander.MoveGroupCommander(group_name)
         self.group.allow_replanning(True)
         self.group.set_goal_position_tolerance(0.01)
-        self.group.set_goal_orientation_tolerance(0.3)
+        self.group.set_goal_orientation_tolerance(0.1)
         self.group.set_planning_time(1)
 
         self.client = None
@@ -65,9 +66,9 @@ class Breathe(object):
         self.waypoints = []
         self.plan = None
         
-        self.gaze_point = np.array([-0.35, 1.40, 0.05])
-        self.move_vector = (np.array([0, 1, 1])
-                            / np.linalg.norm(np.array([0, 1, 1])))
+        self.gaze_point = np.array([-0.06, 0.81, -0.32])
+        self.move_vector = (np.array([1, 1, 1])
+                            / np.linalg.norm(np.array([1, 1, 1])))
         self.start_client()
 
     def choose_source(self):
@@ -93,7 +94,7 @@ class Breathe(object):
         elif self.source == 2:
             shape_data = [math.sin(element)
                            for element in 
-                           (np.linspace(0, 120/60*math.pi, 60)).tolist()]
+                           (np.linspace(0, 119/60*math.pi, 60)).tolist()]
             for data in shape_data:
                 pose_next.position.x = start_pose.position.x \
                     + data*self.amplitude*self.move_vector[0]
@@ -103,6 +104,29 @@ class Breathe(object):
                     + data*self.amplitude*self.move_vector[2]
                 self.waypoints.append(copy.deepcopy(pose_next))
         else:
+            shape_data = [0.0, 0.005624999999999991, 0.014378906250000045, 
+            0.024486547851562568, 0.03474537368774422, 0.0443933953943253, 
+            0.0529963630275786, 0.060354717840215955, 0.06642930274659942, 
+            0.07128390374926041, 0.07504226099316191, 0.0778570788273204, 
+            0.07988866580429121, 0.08129106189085289, 0.08220379893995788, 
+            0.08274774841852639, 0.08302380913885798, 0.0790451566321223, 
+            0.07260624098380641, 0.06495160665441868, 0.05691987986583036, 
+            0.04905405662967122, 0.041685214275588134, 0.03499542709050685, 
+            0.02906453874530568, 0.02390450659228971, 0.019484261167040162, 
+            0.015747394717907204, 0.012624483451303736, 0.010041439737111357, 
+            0.007924965428885544, 0.006205920714800195, 0.004821221732756786, 
+            0.0037147237823418333, 0.002837426374215357, 0.0021472441754255556, 
+            0.0016085180924106934, 0.0011913883859058227, 0.0008711129000450457, 
+            0.0006273850763798272, 0.00044368593276999935]
+            max_data = max(shape_data)
+            for data in shape_data:
+                pose_next.position.x = start_pose.position.x \
+                    + data*self.amplitude*self.move_vector[0]/max_data
+                pose_next.position.y = start_pose.position.y \
+                    + data*self.amplitude*self.move_vector[1]/max_data
+                pose_next.position.z = start_pose.position.z \
+                    + data*self.amplitude*self.move_vector[2]/max_data
+                self.waypoints.append(copy.deepcopy(pose_next))
             pass
         
 
@@ -196,12 +220,25 @@ class Breathe(object):
 
     def execute_path(self):
         d = 0.0
+        old_b = list(self.plan.joint_trajectory.points[-1].positions)
+        old_b[-1] = -0.84
+        old_old_b = list(self.plan.joint_trajectory.points[-2].positions)
+        old_old_b[-1] = -0.84
+        old_old_old_b = list(self.plan.joint_trajectory.points[-3].positions)
+        old_old_old_b[-1] = -0.84
         inc = 60/self.bpm/len(self.plan.joint_trajectory.points)
         for i in range(self.num_cycles):
             for point in self.plan.joint_trajectory.points:
                 b = list(point.positions)
-                b[-1] = 3.9
-                point.positions = tuple(b)
+                b[-1] = -0.84
+                list_b = (np.array(b)
+                +np.array(old_b)
+                +np.array(old_old_b)
+                +np.array(old_old_old_b))/4
+                old_old_old_b = old_old_b
+                old_old_b = old_b
+                old_b = b
+                point.positions = tuple(list_b)
                 d += inc
                 self.goal_j.trajectory.points.append(
                     trajectory_msgs.msg.JointTrajectoryPoint(
@@ -275,17 +312,24 @@ if __name__ == '__main__':
         br = Breathe(args)
         #send2take()
         br.breathe_now()
-        rospy.sleep(10)
+        rate = 10
+        sample = rospy.Rate(rate)
+        while ((br.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
+            and not rospy.is_shutdown()):
+            #print "not yet"
+            sample.sleep()
+        print "now or never"
+        #rospy.sleep(12)
         a = pp.PickPlace()
         a.state_machine()
-        br.amplitude = 0.2
-        br.breathe_now()
-        rospy.sleep(8)
-        a.state_machine()
-        br.gaze = 1
-        br.breathe_now()
-        rospy.sleep(10)
-        a.state_machine()
+        # br.amplitude = 0.2
+        # br.breathe_now()
+        # rospy.sleep(8)
+        # a.state_machine()
+        # br.gaze = 1
+        # br.breathe_now()
+        # rospy.sleep(10)
+        # a.state_machine()
         print "finished"
         #br.send_default()
         
