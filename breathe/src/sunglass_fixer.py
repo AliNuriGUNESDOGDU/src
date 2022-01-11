@@ -15,7 +15,9 @@ import actionlib
 import actionlib_msgs.msg
 import control_msgs.msg
 import moveit_commander
+import moveit_msgs.srv
 import rospy
+import sensor_msgs.msg
 import tf
 import trajectory_msgs.msg
 
@@ -89,8 +91,8 @@ class PickPlace(object):
         q_show = [1.99,0.89,-0.95,-3.11,-2.02,-1.59]
         q_release = [0.41,0.51,-0.95,-1.21,-1.52,-1.15]
         # Times
-        t_go_wait = 0.8
-        t_wait = 0.4
+        t_go_wait = 0.7
+        t_wait = 0.2
         t_go_pick = 2.4
         t_gripper_open = 0.3
         t_pick = 0.5
@@ -331,19 +333,64 @@ def send2take():
 if __name__ == '__main__':
     try:
         rospy.init_node('pickandplace', anonymous=True)
-        pp = PickPlace()
-        q1 = [-1.36,-3.91,1.91,-2.28,-4.15,3.9]
+        # pp = PickPlace()
+        # q1 = [1.83,1.01,-1.92,-1.18,-2.04,-0.84]
         #pp.go(q1,1.2)
-        #q1 = [0.0,0.0,0.0,0.0,0.0,0.0]
-        q1 = [2.28,1.04,-1.99,-1.26,-1.56,-1.57]
-        # q1 = [1.99,0.89,-0.95,-3.11,-2.02,-1.59]
+        #q1 = [2.28,1.04,-1.99,-1.26,-1.56,-1.57]
+        q1 = [0.00,0.0,0.0,0.0,0.0,0.0]
+        #q1 = [1.85,1.01,-1.92,-1.15,-0.89,-2.44]
         # pp.grip_now()
-        pp.go(q1,1.0)
-        pp.state_machine()
+        # pp.go(q1,1.2)
+        # pp.state_machine()
         #pp.grip_now()
         #send2take()
-        
-        
+
+        JOINT_NAMES = [
+            'shoulder_pan_joint',
+            'shoulder_lift_joint',
+            'elbow_joint',
+            'wrist_1_joint',
+            'wrist_2_joint',
+            'wrist_3_joint']
+        fk_srv = rospy.ServiceProxy('/compute_fk',
+                                         moveit_msgs.srv.GetPositionFK)
+        rospy.loginfo("Waiting for /compute_fk service...")
+        fk_srv.wait_for_service()
+        rospy.loginfo("Connected!")
+        req = moveit_msgs.srv.GetPositionFKRequest()
+        req.header.frame_id = 'base_link'
+        req.fk_link_names = ['tool0']
+        js = sensor_msgs.msg.JointState()
+        js.position = q1
+        js.name = JOINT_NAMES
+        #print js
+        req.robot_state.joint_state = js
+        resp = fk_srv.call(req)
+        print resp
+
+        wpose = resp.pose_stamped[0].pose
+        matrixx = tf.transformations.quaternion_matrix([
+            wpose.orientation.x,
+            wpose.orientation.y,
+            wpose.orientation.z,
+            wpose.orientation.w])
+        print matrixx
+        # inv_matrixx = tf.transformations.inverse_matrix(matrixx)
+        # move_vector = np.dot(([0, 0, 1, 1]), inv_matrixx)
+        # print move_vector
+        z_base_in_wrist_3 = np.dot(([1, 0, 0, 1]), matrixx)
+        print z_base_in_wrist_3
+        z_base_in_wrist_3 = np.dot(([0, 1, 0, 1]), matrixx)
+        print z_base_in_wrist_3
+        z_base_in_wrist_3 = np.dot(([0, 0, 1, 1]), matrixx)
+        print z_base_in_wrist_3
+        theta = math.atan(z_base_in_wrist_3[1]/z_base_in_wrist_3[0])
+        print theta
+        if 0 > z_base_in_wrist_3[1]*math.sin(theta)+z_base_in_wrist_3[0]*math.cos(theta):
+            theta -= math.pi
+        if theta < -math.pi:
+            theta += math.pi*2
+        print theta
         rospy.spin()
     except rospy.ROSInterruptException:
         print ("Program interrupted before completion")

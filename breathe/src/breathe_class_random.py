@@ -21,7 +21,8 @@ import sensor_msgs.msg
 import tf
 import trajectory_msgs.msg
 
-import gripper_joint_space as pp
+import gripper_joint_space_fst as pp1
+import gripper_joint_space_scn as pp2
 
 
 class BreathingSource(object):
@@ -43,8 +44,6 @@ class Breathe(object):
     """
 
     def __init__(self, args):
-        moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('breathing', anonymous=True)
 
         self.amplitude = args.amplitude
         self.bpm = args.bpm
@@ -77,59 +76,76 @@ class Breathe(object):
         self.waypoints = []
         start_pose = self.group.get_current_pose().pose
         pose_next = copy.deepcopy(start_pose)
-        if self.source == 1:
-            shape_data = [0.05, 0.4910, 1.7458, 3.296, 4.9083, 6.5336, 
-                           8.1843, 9.8487, 11.4723, 13.0, 14.4342, 15.7978, 
-                           17.0696, 18.1916, 19.1012, 19.7648, 20.1988, 
-                           20.4667, 20.6032, 20.5069, 19.9832, 18.8786, 
-                           17.2090, 15.1815, 12.9707, 10.6080, 8.1561, 
-                           5.7395, 3.3896, 1.0770, 0.52, 0.25]
-            max_data = max(shape_data)
-            for data in shape_data:
-                pose_next.position.x = start_pose.position.x \
-                    + data*self.amplitude*self.move_vector[0]/max_data
-                pose_next.position.y = start_pose.position.y \
-                    + data*self.amplitude*self.move_vector[1]/max_data
-                pose_next.position.z = start_pose.position.z \
-                    + data*self.amplitude*self.move_vector[2]/max_data
-                self.waypoints.append(copy.deepcopy(pose_next))
-        elif self.source == 2:
-            shape_data = [math.sin(element)
-                           for element in 
-                           (np.linspace(0, 119/60*math.pi, 60)).tolist()]
-            for data in shape_data:
-                pose_next.position.x = start_pose.position.x \
-                    + data*self.amplitude*self.move_vector[0]
-                pose_next.position.y = start_pose.position.y \
-                    + data*self.amplitude*self.move_vector[1]
-                pose_next.position.z = start_pose.position.z \
-                    + data*self.amplitude*self.move_vector[2]
-                self.waypoints.append(copy.deepcopy(pose_next))
-        else:
-            shape_data = [0.0, 0.005624999999999991, 0.014378906250000045, 
-            0.024486547851562568, 0.03474537368774422, 0.0443933953943253, 
-            0.0529963630275786, 0.060354717840215955, 0.06642930274659942, 
-            0.07128390374926041, 0.07504226099316191, 0.0778570788273204, 
-            0.07988866580429121, 0.08129106189085289, 0.08220379893995788, 
-            0.08274774841852639, 0.08302380913885798, 0.0790451566321223, 
-            0.07260624098380641, 0.06495160665441868, 0.05691987986583036, 
-            0.04905405662967122, 0.041685214275588134, 0.03499542709050685, 
-            0.02906453874530568, 0.02390450659228971, 0.019484261167040162, 
-            0.015747394717907204, 0.012624483451303736, 0.010041439737111357, 
-            0.007924965428885544, 0.006205920714800195, 0.004821221732756786, 
-            0.0037147237823418333, 0.002837426374215357, 0.0021472441754255556, 
-            0.0016085180924106934, 0.0011913883859058227, 0.0008711129000450457, 
-            0.0006273850763798272, 0.00044368593276999935]
-            max_data = max(shape_data)
-            for data in shape_data:
-                pose_next.position.x = start_pose.position.x \
-                    + data*self.amplitude*self.move_vector[0]/max_data
-                pose_next.position.y = start_pose.position.y \
-                    + data*self.amplitude*self.move_vector[1]/max_data
-                pose_next.position.z = start_pose.position.z \
-                    + data*self.amplitude*self.move_vector[2]/max_data
-                self.waypoints.append(copy.deepcopy(pose_next))
-            pass
+        old_rand_amp = 0
+        old_rand_mo_ve = np.array([0.0, 0.0, 0.0])
+        for i in range(self.num_cycles):
+            self.amplitude -= old_rand_amp
+            rand_amp = float(np.random.normal(loc=0,scale=0.01,size=1))
+            self.amplitude += rand_amp
+            old_rand_amp = rand_amp
+            print (self.amplitude)
+
+            self.move_vector -= old_rand_mo_ve
+            rand_mo_ve = np.random.normal(loc=0,scale=0.2,size=3)
+            self.move_vector += rand_mo_ve
+            self.move_vector /= np.linalg.norm(self.move_vector)
+            old_rand_mo_ve = rand_mo_ve
+            print (self.move_vector)
+
+            
+            if self.source == 1:
+                shape_data = [0.05, 0.4910, 1.7458, 3.296, 4.9083, 6.5336, 
+                            8.1843, 9.8487, 11.4723, 13.0, 14.4342, 15.7978, 
+                            17.0696, 18.1916, 19.1012, 19.7648, 20.1988, 
+                            20.4667, 20.6032, 20.5069, 19.9832, 18.8786, 
+                            17.2090, 15.1815, 12.9707, 10.6080, 8.1561, 
+                            5.7395, 3.3896, 1.0770, 0.52, 0.25]
+                max_data = max(shape_data)
+                for data in shape_data:
+                    pose_next.position.x = start_pose.position.x \
+                        + data*self.amplitude*self.move_vector[0]/max_data
+                    pose_next.position.y = start_pose.position.y \
+                        + data*self.amplitude*self.move_vector[1]/max_data
+                    pose_next.position.z = start_pose.position.z \
+                        + data*self.amplitude*self.move_vector[2]/max_data
+                    self.waypoints.append(copy.deepcopy(pose_next))
+            elif self.source == 2:
+                shape_data = [math.sin(element)
+                            for element in 
+                            (np.linspace(0, 119/60*math.pi, 60)).tolist()]
+                for data in shape_data:
+                    pose_next.position.x = start_pose.position.x \
+                        + data*self.amplitude*self.move_vector[0]
+                    pose_next.position.y = start_pose.position.y \
+                        + data*self.amplitude*self.move_vector[1]
+                    pose_next.position.z = start_pose.position.z \
+                        + data*self.amplitude*self.move_vector[2]
+                    self.waypoints.append(copy.deepcopy(pose_next))
+            else:
+                shape_data = [0.0, 0.005624999999999991, 0.014378906250000045, 
+                0.024486547851562568, 0.03474537368774422, 0.0443933953943253, 
+                0.0529963630275786, 0.060354717840215955, 0.06642930274659942, 
+                0.07128390374926041, 0.07504226099316191, 0.0778570788273204, 
+                0.07988866580429121, 0.08129106189085289, 0.08220379893995788, 
+                0.08274774841852639, 0.08302380913885798, 0.0790451566321223, 
+                0.07260624098380641, 0.06495160665441868, 0.05691987986583036, 
+                0.04905405662967122, 0.041685214275588134, 0.03499542709050685, 
+                0.02906453874530568, 0.02390450659228971, 0.019484261167040162, 
+                0.015747394717907204, 0.012624483451303736, 0.010041439737111357, 
+                0.007924965428885544, 0.006205920714800195, 0.004821221732756786, 
+                0.0037147237823418333, 0.002837426374215357, 0.0021472441754255556, 
+                0.0016085180924106934, 0.0011913883859058227, 0.0008711129000450457, 
+                0.0006273850763798272, 0.00044368593276999935]
+                max_data = max(shape_data)
+                for data in shape_data:
+                    pose_next.position.x = start_pose.position.x \
+                        + data*self.amplitude*self.move_vector[0]/max_data
+                    pose_next.position.y = start_pose.position.y \
+                        + data*self.amplitude*self.move_vector[1]/max_data
+                    pose_next.position.z = start_pose.position.z \
+                        + data*self.amplitude*self.move_vector[2]/max_data
+                    self.waypoints.append(copy.deepcopy(pose_next))
+                pass
         
 
     def start_client(self):
@@ -197,6 +213,7 @@ class Breathe(object):
         inv_matrixx = tf.transformations.inverse_matrix(matrixx)
         self.move_vector = np.dot(([1, 0, 0, 1]), inv_matrixx)
         self.move_vector /= np.linalg.norm(self.move_vector)
+        self.move_vector = self.move_vector[0:3]
         self.choose_source()
 
     def maintain_gaze(self):
@@ -247,9 +264,15 @@ class Breathe(object):
         old_old_b[-1] = -1.57
         old_old_old_b = list(self.plan.joint_trajectory.points[-3].positions)
         old_old_old_b[-1] = -1.57
-        inc = 60/self.bpm/len(self.plan.joint_trajectory.points)
-        for i in range(self.num_cycles):
+        inc = 60/self.bpm/len(self.plan.joint_trajectory.points)*self.num_cycles
+        old_rand_inc = 0.0
+        for i in range(1):
             for point in self.plan.joint_trajectory.points:
+                inc -= old_rand_inc
+                rand_inc = float(np.random.normal(loc=0,scale=0.003,size=1))
+                inc += rand_inc
+                old_rand_inc = rand_inc
+                print(inc)
                 b = list(point.positions)
                 b[-1] = -1.57
                 list_b = (np.array(b)
@@ -350,7 +373,15 @@ if __name__ == '__main__':
         args = parser.parse_args()
         print args.amplitude, args.bpm, args.gaze, args.source
 
+
+        moveit_commander.roscpp_initialize(sys.argv)
+        rospy.init_node('breathing', anonymous=True)
+
         br = Breathe(args)
+
+
+        rate = 10
+        sample = rospy.Rate(rate)
         #send2take()
         rospy.sleep(5)
         print("--------------------------")
@@ -358,20 +389,53 @@ if __name__ == '__main__':
         print("STARTING NOW")
         print("--------------------------")
         print("--------------------------")
+        q1 = [2.15,0.99,-2.1,-0.98,-1.57,-1.57]
+        q2 = [2.37,0.98,-2.04,-1.15,-1.57,-1.57]
+        a1 = pp1.PickPlace()
+        a2 = pp2.PickPlace()
+        a1.go(q1,1.0)
+
+        while ((a1.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
+            and not rospy.is_shutdown()):
+            #print "not yet"
+            sample.sleep()
+
+        br.gaze_point = np.array([-0.51, 0.57, -0.32])
         br.breathe_now()
-        rate = 10
-        sample = rospy.Rate(rate)
         while ((br.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
             and not rospy.is_shutdown()):
             #print "not yet"
             sample.sleep()
         print "now or never"
         #rospy.sleep(12)
-        a = pp.PickPlace()
         rospy.loginfo("wait")
         rospy.sleep(1.0)
         rospy.loginfo("continue")
-        # a.state_machine()
+        a1.state_machine()
+        while ((a1.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
+            and not rospy.is_shutdown()):
+            #print "not yet"
+            sample.sleep()
+        rospy.sleep(0.30)
+        a2.go(q2,1.0)
+        while ((a2.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
+            and not rospy.is_shutdown()):
+            #print "not yet"
+            sample.sleep()
+        br2 = Breathe(args)
+        br2.gaze_point = np.array([-0.69, 0.53, -0.32])
+        br2.breathe_now()
+
+        while ((br2.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
+            and not rospy.is_shutdown()):
+            #print "not yet"
+            sample.sleep()
+        rospy.loginfo("wait")
+        rospy.sleep(1.0)
+        rospy.loginfo("continue")
+        a2.state_machine()
+
+
         # br.amplitude = 0.2
         # br.breathe_now()
         # rospy.sleep(8)

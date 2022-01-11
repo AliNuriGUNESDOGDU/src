@@ -83,22 +83,29 @@ class PickPlace(object):
         # q_pick = [1.53,0.65,-1.08,-1.18,-1.59,-0.07]
         # q_show = [1.03,0.83,-1.23,-3.00,-2.10,-1.68]
         # q_release = [-0.37,0.67,-1.21,-1.1,-1.61,-0.85]
-        q_wait = [2.28,1.04,-1.99,-1.26,-1.56,-1.57]
-        q_go_pick = [2.27,0.67,-1.13,-1.18,-1.59,-0.93]
-        q_pick = [2.27,0.67,-1.13,-1.18,-1.59,-0.93]
+        q_wait = [2.15,0.99,-2.1,-0.98,-1.57,-1.57]
+        q_before_pick = [2.15,0.59,-1.24,-0.89,-1.57,-1.12]
+        q_go_pick = [2.16,0.76,-1.32,-1.03,-1.57,-1.12]
+        q_after_pick = q_before_pick
         q_show = [1.99,0.89,-0.95,-3.11,-2.02,-1.59]
-        q_release = [0.41,0.51,-0.95,-1.21,-1.52,-1.15]
+        q_before_release = [0.66, 0.59,-1.24,-0.89,-1.57,-2.62]
+        q_release = [0.66, 0.76,-1.32,-1.03,-1.57,-2.62]
+        q_after_release = q_before_release
         # Times
         t_go_wait = 0.8
         t_wait = 0.4
-        t_go_pick = 2.4
+        t_before_pick = 2.4
+        t_go_pick = 1.0
         t_gripper_open = 0.3
         t_pick = 0.5
         t_gripper_close = 0.2
+        t_after_pick = 1.0
         t_go_show = 2.4
         t_show = 1.6
-        t_go_release = 2.4
+        t_before_release = 3.8
+        t_go_release = 1.0
         t_release = 1.0
+        t_after_release = 1.0
         t_go_end = 4.4
         # Other Params
         rate = 20 # Hz
@@ -115,12 +122,20 @@ class PickPlace(object):
         END             = False
         IN_GO_WAIT      = True
         IN_WAIT         = False
+        IN_BEFORE_PICK  = False
+        BEFORE_PICK     = False
         IN_GO_PICK      = False
         IN_PICK         = False
+        IN_AFTER_PICK   = False
+        AFTER_PICK      = False
         IN_GO_SHOW      = False
         IN_SHOW         = False
+        IN_BEFORE_RELEASE= False
+        BEFORE_RELEASE   = False
         IN_GO_RELEASE   = False
         IN_RELEASE      = False
+        IN_AFTER_RELEASE= False
+        AFTER_RELEASE   = False
         IN_END          = False
 
         # State Machine
@@ -149,15 +164,28 @@ class PickPlace(object):
             if WAIT:
                 if t_passed >= t_wait:
                     WAIT = False
-                    IN_GO_PICK = True
+                    IN_BEFORE_PICK = True
                     pass
                 else:
                     t_passed += 1.0/rate
                     pass
                 pass
+            elif IN_BEFORE_PICK:
+                self.go(q_before_pick,t_before_pick)
+                self.gripper_pub.publish("0.0")
+                IN_BEFORE_PICK = False
+                BEFORE_PICK = True
+                print("IN_BEFORE_PICK")
+                pass
+            elif BEFORE_PICK:
+                if (self.client.get_state() 
+                == actionlib_msgs.msg.GoalStatus.SUCCEEDED):
+                    BEFORE_PICK = False
+                    IN_GO_PICK = True
+                    pass
+                pass
             elif IN_GO_PICK:
                 self.go(q_go_pick,t_go_pick)
-                self.gripper_pub.publish("0.0")
                 IN_GO_PICK = False
                 GO_PICK = True
                 print("IN_GO_PICK")
@@ -179,10 +207,23 @@ class PickPlace(object):
             elif PICK   :
                 if t_passed >= t_pick:
                     PICK = False
-                    IN_GO_SHOW = True
+                    IN_AFTER_PICK = True
                     pass
                 else:
                     t_passed += 1.0/rate
+                    pass
+                pass
+            elif IN_AFTER_PICK:
+                self.go(q_after_pick,t_after_pick)
+                IN_AFTER_PICK = False
+                AFTER_PICK = True
+                print("IN_AFTER_PICK")
+                pass
+            elif AFTER_PICK:
+                if (self.client.get_state() 
+                == actionlib_msgs.msg.GoalStatus.SUCCEEDED):
+                    AFTER_PICK = False
+                    IN_GO_SHOW = True
                     pass
                 pass
             elif IN_GO_SHOW:
@@ -207,10 +248,23 @@ class PickPlace(object):
             elif SHOW:
                 if t_passed >= t_show:
                     SHOW = False
-                    IN_GO_RELEASE = True
+                    IN_BEFORE_RELEASE = True
                     pass
                 else:
                     t_passed += 1.0/rate
+                    pass
+                pass
+            elif IN_BEFORE_RELEASE:
+                self.go(q_before_release,t_before_release)
+                IN_BEFORE_RELEASE = False
+                BEFORE_RELEASE = True
+                print("IN_BEFORE_RELEASE")
+                pass
+            elif BEFORE_RELEASE:
+                if (self.client.get_state() 
+                == actionlib_msgs.msg.GoalStatus.SUCCEEDED):
+                    BEFORE_RELEASE = False
+                    IN_GO_RELEASE = True
                     pass
                 pass
             elif IN_GO_RELEASE:
@@ -236,6 +290,23 @@ class PickPlace(object):
             elif RELEASE:
                 if t_passed >= t_release:
                     RELEASE = False
+                    IN_AFTER_RELEASE = True
+                    pass
+                else:
+                    t_passed += 1.0/rate
+                    pass
+                pass
+            elif IN_AFTER_RELEASE:
+                self.go(q_after_release,t_after_release)
+                t_passed = 0.0
+                IN_AFTER_RELEASE = False
+                AFTER_RELEASE = True
+                print("IN_AFTER_RELEASE")
+                pass
+            elif AFTER_RELEASE:
+                if (self.client.get_state() 
+                == actionlib_msgs.msg.GoalStatus.SUCCEEDED):
+                    AFTER_RELEASE = False
                     IN_END = True
                     pass
                 else:
@@ -335,11 +406,13 @@ if __name__ == '__main__':
         q1 = [-1.36,-3.91,1.91,-2.28,-4.15,3.9]
         #pp.go(q1,1.2)
         #q1 = [0.0,0.0,0.0,0.0,0.0,0.0]
-        q1 = [2.28,1.04,-1.99,-1.26,-1.56,-1.57]
+        q1 = [2.34,0.50,-0.76,-1.33,-1.55,-0.88]
+        q1 = [2.37,0.98,-2.04,-1.15,-1.57,-1.57]
+        #q1 = [0.66, 0.76,-1.32,-1.03,-1.57,-2.62]
         # q1 = [1.99,0.89,-0.95,-3.11,-2.02,-1.59]
         # pp.grip_now()
-        pp.go(q1,1.0)
-        pp.state_machine()
+        pp.go(q1,13.0)
+        #pp.state_machine()
         #pp.grip_now()
         #send2take()
         
