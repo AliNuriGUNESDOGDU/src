@@ -21,8 +21,7 @@ import sensor_msgs.msg
 import tf
 import trajectory_msgs.msg
 
-import gripper_joint_space_fst as pp1
-import gripper_joint_space_scn as pp2
+import gripper_joint_space_vida as pp
 
 
 class BreathingSource(object):
@@ -44,6 +43,8 @@ class Breathe(object):
     """
 
     def __init__(self, args):
+        moveit_commander.roscpp_initialize(sys.argv)
+        rospy.init_node('breathing', anonymous=True)
 
         self.amplitude = args.amplitude
         self.bpm = args.bpm
@@ -218,7 +219,7 @@ class Breathe(object):
             self.waypoints,  # waypoints to follow
             0.5,            # eef_step
             0.0)            # jump_threshold
-e
+
     def execute_path(self):
         JOINT_NAMES = [
             'shoulder_pan_joint',
@@ -288,7 +289,6 @@ e
         self.client.send_goal(self.goal_j)
 
     def breathe_now(self):
-        self.choose_source()
         
         if self.gaze == 1:
             self.no_gaze()
@@ -350,63 +350,40 @@ if __name__ == '__main__':
         args = parser.parse_args()
         print args.amplitude, args.bpm, args.gaze, args.source
 
-
-        moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('breathing', anonymous=True)
-
         br = Breathe(args)
-
-
-        rate = 10
-        sample = rospy.Rate(rate)
         #send2take()
         rospy.sleep(5)
+
+        a1 = pp.PickPlace()
+        a2 = pp.PickPlace()
+        rospy.loginfo("wait")
+        rospy.sleep(1.0)
+        rospy.loginfo("continue")
         print("--------------------------")
         print("--------------------------")
         print("STARTING NOW")
         print("--------------------------")
         print("--------------------------")
-        q1 = [2.15,0.99,-2.1,-0.98,-1.57,-1.57]
-        q2 = [2.37,0.98,-2.04,-1.15,-1.57,-1.57]
-        a1 = pp1.PickPlace()
-        a2 = pp2.PickPlace()
-        # a1.go(q1,1.0)
-
-        # while ((a1.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
-        #     and not rospy.is_shutdown()):
-        #     #print "not yet"
-        #     sample.sleep()
-
-
-        # br.breathe_now()
-        # while ((br.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
-        #     and not rospy.is_shutdown()):
-        #     #print "not yet"
-        #     sample.sleep()
-        # print "now or never"
-        # #rospy.sleep(12)
-        # rospy.loginfo("wait")
-        # rospy.sleep(1.0)
-        # rospy.loginfo("continue")
-        # a1.state_machine()
-        a2.go(q2,15.0)
-        while ((a2.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
+        a1.state_machine()
+        print "now or never"
+        a1.state_machine_only_take()
+        br.breathe_now()
+        rate = 10
+        sample = rospy.Rate(rate)
+        while ((br.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
             and not rospy.is_shutdown()):
             #print "not yet"
             sample.sleep()
-        # br2 = Breathe(args)
-        # br2.breathe_now()
-
-        # while ((br2.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
-        #     and not rospy.is_shutdown()):
-        #     #print "not yet"
-        #     sample.sleep()
-        # rospy.loginfo("wait")
-        # rospy.sleep(1.0)
-        # rospy.loginfo("continue")
-        # a2.state_machine()
-
-
+        print "now or never"
+        a1.state_machine_put_only()
+        a1.state_machine_only_take()
+        br.breathe_now()
+        while ((br.client.get_state()!=actionlib_msgs.msg.GoalStatus.SUCCEEDED)
+            and not rospy.is_shutdown()):
+            #print "not yet"
+            sample.sleep()
+        a1.state_machine_put_only()
+        #rospy.sleep(12)
         # br.amplitude = 0.2
         # br.breathe_now()
         # rospy.sleep(8)
