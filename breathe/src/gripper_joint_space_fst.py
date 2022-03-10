@@ -88,8 +88,8 @@ class PickPlace(object):
         q_go_pick = [2.16,0.76,-1.32,-1.03,-1.57,-1.12]
         q_after_pick = q_before_pick
         q_show = [1.99,0.89,-0.95,-3.11,-2.02,-1.59]
-        q_before_release = [0.66, 0.59,-1.24,-0.89,-1.57,-2.62]
-        q_release = [0.66, 0.76,-1.32,-1.03,-1.57,-2.62]
+        q_before_release = [0.76, 0.59,-1.24,-0.89,-1.57,-2.62]
+        q_release = [0.76, 0.76,-1.32,-1.03,-1.57,-2.62]
         q_after_release = q_before_release
         # Times
         t_go_wait = 0.8
